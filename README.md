@@ -1,25 +1,22 @@
 # chatbot_concierge
-Outline:
 
-<h1>This assignment has the following requirements:</h1>
+This assignment has the following requirements:
 
- 
-
-Build and deploy the frontend of the application
+<b>1. Build and deploy the frontend of the application</b>
  
 
 Repurpose the following frontend starter application to interface with your chatbot
 https://github.com/ndrppnc/cloud-hw1-starter (Links to an external site.) 
  
 
-Host your frontend in an AWS S3 bucket
+<b>2. Host your frontend in an AWS S3 bucket</b>
  
 
 Set the bucket up for website hosting
 https://docs.aws.amazon.com/AmazonS3/latest/dev/HostingWebsiteOnS3Setup.html (Links to an external site.)
  
 
-Build the API for the application
+<b>3. Build the API for the application </b>
  
 
 Use API Gateway to setup your API
