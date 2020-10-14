@@ -257,19 +257,19 @@ Message Box
   color: transparent;
 }
 .message-box .message-submit {
-  position: absolute;
+  position: relative;
   z-index: 1;
   top: 9px;
   right: 10px;
-  color: #000;
+  color: #fff;
   border: none;
-  background: #fff;
-  font-size: 10px;
+  background: #1ba4ce;
+  font-size: 15px;
   text-transform: uppercase;
   line-height: 1;
   padding: 6px 10px;
+  border-radius: 10px;
   outline: none !important;
-  -webkit-transition: background .2s ease;
   transition: background .2s ease;
 }
 .message-box .message-submit:hover {
