@@ -1,11 +1,13 @@
+
 # The following lambda code will verify the user input towards Lambda
 # Also, it will send the customer response to SQS Simple Queue Service
 
 import math
-import dateutil
+import dateutil.parser
 import datetime
 import time
 import os
+import boto3
 
 # --------------- Main handler -----------------------
 
@@ -22,13 +24,13 @@ def dispatch(intent_request):
     if intent_name == 'hbl_GreetingIntent':
         return hbl_GreetingIntent(intent_request)
         
-    elif intent_name == 'hbl_ThankyouIntent':
+    elif intent_name == 'hbl_ThankYouIntent':
         return hbl_ThankyouIntent(intent_request)
         
     elif intent_name == 'hbl_DiningSuggestionIntent':
         return hbl_DiningSuggestionIntent(intent_request)
-
-    raise Exception('Intent with name ' + intent_name + ' not supported')
+    else:
+        raise Exception('Intent with name ' + intent_name + ' not supported')
 
 # --------------- intents -----------------------
 
@@ -39,7 +41,7 @@ def hbl_GreetingIntent(intent_request):
         'Fulfilled',
         {
             'contentType': 'PlainText',
-            'content': 'Hi there, which location are you looking to dine out???'
+            'content': 'Hi there, how can I help you'
         }
     )
 
@@ -55,74 +57,139 @@ def hbl_ThankyouIntent(intent_request):
     )
 
 def hbl_DiningSuggestionIntent(intent_request):
+    dining_location = get_slots(intent_request)["location"]
+    dining_cuisine = get_slots(intent_request)["cuisine"]
     dining_date = get_slots(intent_request)["date"]
     dining_time = get_slots(intent_request)["time"]
     dining_people = get_slots(intent_request)["people"]
     dining_phone_num = get_slots(intent_request)["number"]
 
-    # Validate date
-        #Check format of the date first
-    if valid_date(dining_date) == False:
-        return build_validation_result(
-            False,
-            'date',
-            'Please enter date in the following format : MM-DD-YYYY'
+    if intent_request['invocationSource'] == 'DialogCodeHook':
+        slots = get_slots(intent_request)
+        validation_result = validate_order_restaurants(dining_cuisine, dining_date, dining_people, dining_phone_num)
+        if not validation_result['isValid']:
+            slots[validation_result['violatedSlot']] = None
+            return elicit_slot(intent_request['sessionAttributes'],
+                               intent_request['currentIntent']['name'],
+                               slots,
+                               validation_result['violatedSlot'],
+                               validation_result['message'])
+
+
+        if intent_request[
+            'sessionAttributes'] is not None:
+            output_session_attributes = intent_request['sessionAttributes']
+        else:
+            output_session_attributes = {}
+
+        return delegate(output_session_attributes, get_slots(intent_request))
+    
+    slots = get_slots(intent_request)
+    sqs = boto3.client(
+        service_name='sqs', 
+        region_name='us-east-1'
         )
     
-        # Check if date isn't in the past
-    date_requested = dateutil.parser.parse(dining_date)
-    past_date = datetime.datetime.today() - datetime.timedelta(days=1)
-    if date_requested < past_date:
-        return build_validation_result(
-            False,
-            'date',
-            'You cannot make reservation for past date'
+    body = {
+        "location":dining_location,
+        "cuisine": dining_cuisine,
+        "date": dining_date,
+        "time": dining_time,
+        "people": dining_people,
+        "number": dining_phone_num
+    }
+
+    response = sqs.send_message(
+        QueueUrl = 'https://sqs.us-east-1.amazonaws.com/608484589071/Concierge',
+        MessageBody=str(body)
+    )
+    
+    return close(
+        intent_request['sessionAttributes'],
+        'Fulfilled',
+        {
+            'contentType': 'PlainText',
+            'content': 'Your order for a restaurant at {} has been received, We will return with a text at {}'.format(dining_location, dining_phone_num)
+            }
         )
 
-    # Validate time
-    if dining_time:
-        time_requested = dateutil.parser.parse(dining_time)
-        if time_requested < datetime.datetime.now():
+def validate_order_restaurants(cuisine, date,  people,phone_number ):
+    if cuisine is not None:
+        if str(cuisine).isnumeric():
             return build_validation_result(
                 False,
-                'time',
-                'You cannot make reservation for past time!'
+                'Cuisine',
+                'Please enter the cuisine in a correct format.'
+                )
+
+    if date:
+        if not isvalid_date(date):
+            return build_validation_result(
+                False, 
+                'date', 
+                'Please enter a date with a valid format MM-DD-YYYY'
+            )
+                
+        elif datetime.datetime.strptime(date, '%Y-%m-%d').date() < datetime.date.today():
+            return build_validation_result(
+                False, 
+                'date', 
+                'You cannot book for a past time'
             )
 
-    # Validate number of people
-    if dining_people.isdigit() == False:
-        return build_validation_result(
-            False,
-            'people',
-            'Please enter a valid integer'
-        )
+    if people is not None:
+        if not int(people):
+            return build_validation_result(
+                False, 
+                'people',
+                'The input must be an integer'
+                )
+        if int(people)<1:
+            return build_validation_result(
+                False, 
+                'people',
+                'You can only book for a group larger than 1'
+            )
+        if int(people)>50:
+           return build_validation_result(
+                False, 
+                'people',
+                'You can only book for a group less than 50'
+           )
+    if phone_number is not None:
+        phone_number = phone_number.replace('-','')
+        if phone_number.startswith('+1') == False:
+            return build_validation_result(
+                False, 
+                'number', 
+                'Please enter a phone number that starts with +1'
+            )
+
+        elif len(phone_number) != 12:
+            return build_validation_result(
+                False, 
+                'number',
+                'The length of the phone number should be 12'
+            )
+
+    return build_validation_result(True, None, None)
     
-    if (0<int(dining_people)<50) == False:
-        return build_validation_result(
-            False,
-            'people',
-            'You can only make reservation for up to 50 people'
-        )
-    
-    # Validate phone_number
-    if phone_number.isdigit() == False:
-        return build_validation_result(
-            False,
-            'number',
-            'Please enter a phone number in the following format XXXXXXXXXX'
-        )
-
-    if (10<=len(phone_numer)<=11) == False:
-        return build_validation_result(
-            False,
-            'number',
-            'Please enter a phone number that is 10 or 11 digits long'
-        )
-
-
-
 
 # --------------- Helper function -----------------------
+def get_slots(intent_request):
+    return intent_request['currentIntent']['slots']
+    
+def elicit_slot(session_attributes, intent_name, slots, slot_to_elicit, message):
+    return {
+        'sessionAttributes': session_attributes,
+        'dialogAction': {
+            'type': 'ElicitSlot',
+            'intentName': intent_name,
+            'slots': slots,
+            'slotToElicit': slot_to_elicit,
+            'message': message
+        }
+    }
 def close(session_attributes, fulfillment_state, message):
     response = {
         'sessionAttributes': session_attributes,
@@ -132,10 +199,18 @@ def close(session_attributes, fulfillment_state, message):
             'message': message
         }
     }
+
     return response
 
-def get_slots(intent_request):
-    return intent_request['currentIntent']['slots']
+
+def delegate(session_attributes, slots):
+    return {
+        'sessionAttributes': session_attributes,
+        'dialogAction': {
+            'type': 'Delegate',
+            'slots': slots
+        }
+    }
 
 def build_validation_result(is_valid, violated_slot, message_content):
     if message_content is None:
@@ -150,9 +225,13 @@ def build_validation_result(is_valid, violated_slot, message_content):
         'message': {'contentType': 'PlainText', 'content': message_content}
     }
 
-def valid_date(date):
+
+def isvalid_date(date):
     try:
         dateutil.parser.parse(date)
         return True
     except ValueError:
         return False
+
+
+
