@@ -65,8 +65,10 @@
                 <div class="messages-content"></div>
               </div>
               <div class="message-box">
-                <textarea type="text" class="message-input" placeholder="Type here..."></textarea>
+                
+                <textarea type="text" class="message-input" placeholder="Type message..."></textarea>
                 <button type="submit" class="message-submit">Send</button>
+
               </div>
             </div>
           </div>
@@ -78,11 +80,7 @@
     </div>
 
     <script>
-
-      $(document).ready(function () {
-      var sdk = apigClientFactory.newClient();
-      document.getElementsByClassName('message-input')[0].focus();
-    });
+      var sdk = apigClientFactory.newClient({});
     </script>
 
     <!-- Bootstrap core JavaScript

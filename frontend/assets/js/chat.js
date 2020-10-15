@@ -1,3 +1,4 @@
+
 var checkout = {};
 
 $(document).ready(function() {
@@ -50,17 +51,19 @@ $(document).ready(function() {
     callChatbotApi(msg)
       .then((response) => {
         console.log(response);
-        var data = response.data;
 
-        if (data.messages && data.messages.length > 0) {
-          console.log('received ' + data.messages.length + ' messages');
+        //Modification done here. Used JSON stringify
+        var data = JSON.stringify(response.data['body']);
+        if (data && data.length > 0) {
+          console.log('received ' + data.length + ' messages');
 
-          var messages = data.messages;
-
+          var messages = data;
+          insertResponseMessage(messages)
           for (var message of messages) {
             if (message.type === 'unstructured') {
               insertResponseMessage(message.unstructured.text);
-            } else if (message.type === 'structured' && message.structured.type === 'product') {
+            } 
+            else if (message.type === 'structured' && message.structured.type === 'product') {
               var html = '';
 
               insertResponseMessage(message.structured.text);

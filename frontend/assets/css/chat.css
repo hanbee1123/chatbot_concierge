@@ -261,13 +261,13 @@ Message Box
   z-index: 1;
   top: 9px;
   right: 10px;
-  color: #fff;
+  color: rgb(255, 255, 255);
   border: none;
-  background: #1ba4ce;
+  background: #1bc429;
   font-size: 15px;
   text-transform: uppercase;
   line-height: 1;
-  padding: 6px 10px;
+  padding: 5px 15px;
   border-radius: 10px;
   outline: none !important;
   transition: background .2s ease;
