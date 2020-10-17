@@ -54,11 +54,13 @@ $(document).ready(function() {
 
         //Modification done here. Used JSON stringify
         var data = JSON.stringify(response.data['body']);
+
         if (data && data.length > 0) {
           console.log('received ' + data.length + ' messages');
 
           var messages = data;
           insertResponseMessage(messages)
+          updateScrollbar()
           for (var message of messages) {
             if (message.type === 'unstructured') {
               insertResponseMessage(message.unstructured.text);
@@ -92,11 +94,15 @@ $(document).ready(function() {
 
   $('.message-submit').click(function() {
     insertMessage();
+    updateScrollbar()
+
   });
 
   $(window).on('keydown', function(e) {
     if (e.which == 13) {
       insertMessage();
+      updateScrollbar()
+
       return false;
     }
   })

@@ -66,7 +66,7 @@ def hbl_DiningSuggestionIntent(intent_request):
 
     if intent_request['invocationSource'] == 'DialogCodeHook':
         slots = get_slots(intent_request)
-        validation_result = validate_order_restaurants(dining_cuisine, dining_date, dining_people, dining_phone_num)
+        validation_result = validate_order_restaurants(dining_location, dining_cuisine, dining_date, dining_people, dining_phone_num)
         if not validation_result['isValid']:
             slots[validation_result['violatedSlot']] = None
             return elicit_slot(intent_request['sessionAttributes'],
@@ -100,7 +100,7 @@ def hbl_DiningSuggestionIntent(intent_request):
     }
 
     response = sqs.send_message(
-        QueueUrl = 'https://sqs.us-east-1.amazonaws.com/608484589071/Concierge',
+        QueueUrl = 'https://sqs.us-east-1.amazonaws.com/608484589071/Concierge.fifo',
         MessageBody=str(body)
     )
     
@@ -113,12 +113,31 @@ def hbl_DiningSuggestionIntent(intent_request):
             }
         )
 
-def validate_order_restaurants(cuisine, date,  people,phone_number ):
+def validate_order_restaurants(location, cuisine, date,  people,phone_number ):
+    locations_nyc=['new york', 'newyork', 'ny', 'nyc', 'newyorkcity', 'new york city', 'newyork city']
+    if location is not None:
+        if location.lower() not in locations_nyc:
+            return build_validation_result(
+                False, 
+                'location',
+                'For now, you can only choose a restaurant location in New York.'
+            )
+    
+    
+    
+    cuisine_type = ['indian', 'mexican', 'japanese','chinese', 'coffee']
     if cuisine is not None:
+        if cuisine.lower() not in cuisine_type:
+            return build_validation_result(
+                False,
+                'cuisine',
+                'For now, you can only choose from indian, mexican, japanese ,chinese, coffee'
+            )
+
         if str(cuisine).isnumeric():
             return build_validation_result(
                 False,
-                'Cuisine',
+                'cuisine',
                 'Please enter the cuisine in a correct format.'
                 )
 
@@ -158,18 +177,18 @@ def validate_order_restaurants(cuisine, date,  people,phone_number ):
            )
     if phone_number is not None:
         phone_number = phone_number.replace('-','')
-        if phone_number.startswith('+1') == False:
+        if phone_number.startswith('+82') == False:
             return build_validation_result(
                 False, 
                 'number', 
-                'Please enter a phone number that starts with +1'
+                'Please enter a phone number that starts with +82'
             )
 
-        elif len(phone_number) != 12:
+        elif len(phone_number) != 13:
             return build_validation_result(
                 False, 
                 'number',
-                'The length of the phone number should be 12'
+                'The length of the phone number should be 13'
             )
 
     return build_validation_result(True, None, None)
