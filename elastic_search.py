@@ -2,6 +2,8 @@ import boto3
 import csv
 import json
 
+# ----------------- Upload Json file to elastic search ------------------------
+
 key = 0
 with open('Yelp_Restaurants.csv') as csvfile:
     reader = csv.reader(csvfile)
@@ -15,6 +17,7 @@ with open('Yelp_Restaurants.csv') as csvfile:
             outfile.write('\n')
             json.dump(data, outfile)
             outfile.write('\n')
+
 
 # The following is the curl command to post the json file to elastic search
 # curl 'https://search-yelpyelprestaurant-ujbkvdusitv4oijcy4okrpppgm.us-east-2.es.amazonaws.com/_cat/health?v'

@@ -5,12 +5,16 @@ import ast
 from random import randint
 import requests
 
+# --------------- Constant Variable -----------------------
 # boto3 = boto3.Session(profile_name = 'nyu')
 QUEUE_URL= 'https://queue.amazonaws.com/608484589071/Concierge'
 
+
+
+# ----------- function to dequeue message from SQS ------------------
+
 def dequeue():
     sqs= boto3.client('sqs', region_name='us-east-1')
-    
     try:
         sqs_response = sqs.receive_message(
         QueueUrl = QUEUE_URL,
@@ -41,22 +45,30 @@ def dequeue():
             ReceiptHandle = receipt_handle
         )
 
-    except:
-        print('Error while retrieving message from SQS!')
+    # If no message, print error without return value
+    except IndexError:
+        return ('Error while retrieving message from SQS!')
 
+    # Return values
     return (res_location, res_cuisine, res_date, res_time, res_people, res_number)
 
+
+
+# ----------- Perform elastic search with cuisine keyword from SQS message ------------------
+
 def rand_elastic_search(location, cuisine):
-    # Pick a random business ID from elastic search with the retrieved cuisine
+    # Collect restaurant data from elastic search
     r = requests.get('https://search-yelpyelprestaurant-ujbkvdusitv4oijcy4okrpppgm.us-east-2.es.amazonaws.com/restaurants/_search?q='+str(cuisine))
     rand_data = r.json()
+    # Choose random among returned list
     value = randint(1,5)
     try:
         rand_buss_id = rand_data["hits"]["hits"][value]['_source']['Business_id']
         return rand_buss_id
     except IndexError:
         return (f"There's no data for {cuisine} in {location}")
-# Using the business ID retrieve information about the restaurant from dynamo db
+
+# ----------- Search DynamoDB to find more information about chosen restaurant ------------------
 
 def dynamodb_search(rand_business_id):
     dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
@@ -71,7 +83,9 @@ def dynamodb_search(rand_business_id):
     print(item)
     message = f"Our recommendation is {name} in {address}. It has {review_count} reviews and a rating of {rating}!!! :)"
     return message
-    # Now push a message to the customer using 'SNS"
+
+
+# ----------- Send message with information about the restaurant ------------------
 
 def sendsns(message, number):
     sns = boto3.client('sns', region_name='us-east-1')
@@ -84,15 +98,23 @@ def sendsns(message, number):
     print(response)
     return(response)
 
+
 def lambda_handler(event, context):
+    # Collect message from SQS
     location, cuisine, date, time, people, number  = dequeue()
     print(location, cuisine, date, time, people, number)
+
+    # Choose a random restaurant with the given cuisine
     rand_business_id = rand_elastic_search(location, cuisine)
     if rand_business_id.startswith("There's no"):
         print(rand_business_id)
     else:
+
+        # Find detailed information about the restaurant
         message = dynamodb_search(rand_business_id)
+
+        # Send SNS message
         if message.startswith("Our recommendation is"):
             sendsns(message, number)
         else:
-            ("Cannot send message")
+            print ("Cannot send message")

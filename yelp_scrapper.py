@@ -5,6 +5,8 @@ from datetime import datetime
 from decimal import Decimal
 import csv
 
+# ----------------- Constant Variables ------------------------
+
 API_KEY= 'LpTJn44WKLXQ3cp4RqiQz323tWXNy-krqgw7FFNjd0coIb8v-FhlLds-Ei4l6K_1oe_sGK904F7-hSk4oN-EeON4E0xIH3vThY3_-9MnMLs-RxCEyNGF8oSJNiyIX3Yx'
 CLIENT_ID = 'N7n5qG_rX5UWwdtsTZZKkw'
 
@@ -21,6 +23,8 @@ CSV_FILE = 'Yelp_Restaurants.csv'
 CUISINES =['indian', 'mexican', 'japanese','chinese', 'coffee']
 LIMIT_DEFAULT = 50
 
+# ----------------- Helper functions ------------------------
+
 def valid(input):
     if len(str(input)) == 0:
         return 'N/A'
@@ -33,6 +37,8 @@ def writeCSV(data):
         f_csv = csv.DictWriter(f, CSV_HEAD)
         f_csv.writeheader()
         f_csv.writerows(data)
+
+# ----------------- scrap information from Yelp using API ------------------------
 
 def scrape_yelp():
     payload = {
@@ -85,6 +91,9 @@ def scrape_yelp():
                     }            
             csv_data_file.append(item)
         writeCSV(csv_data_file)
+
+
+# ----------------- Upload collected information (.csv format) to dynamo db ------------------------
 
 def upload_dynamodb():
     # Connect to dynamodb

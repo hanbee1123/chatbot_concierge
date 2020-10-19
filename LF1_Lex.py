@@ -3,11 +3,12 @@
 # Also, it will send the customer response to SQS Simple Queue Service
 
 import math
-import dateutil.parser
+import dateutil
 import datetime
 import time
 import os
 import boto3
+import parser
 
 # --------------- Main handler -----------------------
 
@@ -41,7 +42,7 @@ def hbl_GreetingIntent(intent_request):
         'Fulfilled',
         {
             'contentType': 'PlainText',
-            'content': 'Hi there, how can I help you'
+            'content': 'Hi there, Please type (breakfast, lunch or dinner) for reservation!'
         }
     )
 
@@ -66,7 +67,7 @@ def hbl_DiningSuggestionIntent(intent_request):
 
     if intent_request['invocationSource'] == 'DialogCodeHook':
         slots = get_slots(intent_request)
-        validation_result = validate_order_restaurants(dining_location, dining_cuisine, dining_date, dining_people, dining_phone_num)
+        validation_result = validate_order_restaurants(dining_location, dining_cuisine, dining_date, dining_time, dining_people, dining_phone_num)
         if not validation_result['isValid']:
             slots[validation_result['violatedSlot']] = None
             return elicit_slot(intent_request['sessionAttributes'],
@@ -100,7 +101,7 @@ def hbl_DiningSuggestionIntent(intent_request):
     }
 
     response = sqs.send_message(
-        QueueUrl = 'https://sqs.us-east-1.amazonaws.com/608484589071/Concierge.fifo',
+        QueueUrl = 'https://sqs.us-east-1.amazonaws.com/608484589071/Concierge',
         MessageBody=str(body)
     )
     
@@ -113,14 +114,14 @@ def hbl_DiningSuggestionIntent(intent_request):
             }
         )
 
-def validate_order_restaurants(location, cuisine, date,  people,phone_number ):
+def validate_order_restaurants(location, cuisine, date, d_time,  people,phone_number ):
     locations_nyc=['new york', 'newyork', 'ny', 'nyc', 'newyorkcity', 'new york city', 'newyork city']
     if location is not None:
         if location.lower() not in locations_nyc:
             return build_validation_result(
                 False, 
                 'location',
-                'For now, you can only choose a restaurant location in New York.'
+                'For now, you can only choose a restaurant location in New York. Type in New York please.'
             )
     
     
@@ -131,7 +132,7 @@ def validate_order_restaurants(location, cuisine, date,  people,phone_number ):
             return build_validation_result(
                 False,
                 'cuisine',
-                'For now, you can only choose from indian, mexican, japanese ,chinese, coffee'
+                'For now, you can only choose from [indian, mexican, japanese ,chinese, coffee]'
             )
 
         if str(cuisine).isnumeric():
@@ -155,6 +156,15 @@ def validate_order_restaurants(location, cuisine, date,  people,phone_number ):
                 'date', 
                 'You cannot book for a past time'
             )
+    
+    if date and d_time:
+        reserve_time = dateutil.parser.parse(date + ' ' + d_time)
+        if reserve_time < datetime.datetime.now():
+            return build_validation_result(
+                False,
+                'time',
+                'Check the time! You cant book for a past time'
+            )
 
     if people is not None:
         if not int(people):
@@ -177,18 +187,18 @@ def validate_order_restaurants(location, cuisine, date,  people,phone_number ):
            )
     if phone_number is not None:
         phone_number = phone_number.replace('-','')
-        if phone_number.startswith('+82') == False:
+        if phone_number.startswith('+1') == False:
             return build_validation_result(
                 False, 
                 'number', 
-                'Please enter a phone number that starts with +82'
+                'Please enter a phone number that starts with +1'
             )
 
-        elif len(phone_number) != 13:
+        elif len(phone_number) != 12:
             return build_validation_result(
                 False, 
                 'number',
-                'The length of the phone number should be 13'
+                'The length of the phone number should be 12'
             )
 
     return build_validation_result(True, None, None)
